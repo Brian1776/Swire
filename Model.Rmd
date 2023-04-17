@@ -1,0 +1,172 @@
+---
+title: "Models"
+author: "Brian Burdick"
+date: "2023-03-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+#Model Building
+
+#Navigation
+
+#Line 36:38 Introduction: Business and Analytics Problem
+
+#Line 40:42 Appropriate Models
+
+#Line 56:64 Data Preparation and Feature Engineering
+
+#Line 67:69 Data Preparation: Variable transformation
+
+#Line 108:132 Linear Model
+
+#Line 133:154 GLM Model
+
+#Line 157:161 Evaluation: Strengths and weaknesses of each model and what metric I used to select the best performing model based on the model characterisitics
+
+#Line 163:168 Model Interpretation
+
+#Line 170:172Results and Business Validation
+
+
+
+#Introduction: Business and Analytics Problem
+
+•	Swire Coca-Cola wants to maximize their earnings by ensuring that when deep discounts are given they make financial sense for the bottom line.  They would like models that can accurately predict longevity of the customer and total sales over a three year period both of which could be predicted by many types of models including linear models, xgboost, NN, and support vector machines.  
+
+#Appropriate Models
+
+•	These are the models I thought about implementing 1) Linear Model because both of our output variables are numeric. 2) GLM Model: from my experience these seem to perform a little better than regular linear models.  3) Neural Net: these perform really well regardless of whether the predictor variables are linearly related to the outcome variables.  4) Lasso because it penalizes coefficients down to 0 so the model is more generalizable when predicting.  I decided to perform the linear and glm models due to being able to train them in a timely manner.  I did attempt to do Lasso but after 45 minutes+ of the model training I dropped it and chose not to do the Neural Net for the same reason.  I am going to use a linear model and GLM to predict the longevity and 3-year sales. 
+
+```{r , echo=TRUE}
+
+md <- read.csv(file.choose(), stringsAsFactors = FALSE) #Read in the data to analyze
+
+
+library(glmnet)
+library(caret)
+library(tidyr)
+
+```
+
+
+#Data Preparation and Feature Engineering
+
+•	I performed these steps in Excel (had this been a database I would have done this transformation in SQL). The assignment is to calculate the longevity of the business i.e., 1,2,3 years and three years of sales.  Since we were only given two years’ worth of historic sales, I multiplied the two years by 1.5 to arrive at estimated three years’ worth of sales.  I took the onboard date and max date to arrive on the longevity of the business.  I also took any customers with a negative profit and set it to zero so my models wouldn’t be thrown off by negative values. 
+
+•	On the customer table I performed the following steps to the data 1) Added Field if sales office city was equal to address city, 2) Added Field if sales office was the same city as delivery plant, 3) Standardized zip code to 5 digit, 4) Dropped latitude and longitude, 5) Standardized on boarding date.  Upon the completion of that I combined both tables together.
+
+•	I added additional columns to the data 1) median income for 2019, 2020, 2021 based on county, 2)median income in county as a percentage of national median, 3) county population and 4) county class.  
+
+•	The predictor variables I used were Sales = Delivery,	sales_office = address_city,	CUSTOMER_ACTIVITY_CLUSTER_DESCRIPTION,	CUSTOMER_TRADE_CHANNEL_DESCRIPTION,	CUSTOMER_SUB_TRADE_CHANNEL_DESCRIPTION,	BUSINESS_TYPE_EXTENSION_DESCRIPTION,	CUSTOMER_TRADE_CHANNEL_DESCRIPTION2,	MARKET_DESCRIPTION,	COLD_DRINK_CHANNEL_DESCRIPTION,	Population Code Category,	year 2019,	year 2020,	year 2021,	% of US Median 2019, 	% of US 2020,	% of US Median 2021, and 	County Population as predictors.  My two outcome variables are longevity and 3 year sales.  
+
+
+#Data Preparation: Variable transformation
+
+•	When Swire Coca-Cola go to sell products to new restaurants/customers they will not have information regarding Package size, package, profit, physical volume, invoice price, discount, cogs, or gross profit.  I decided to get rid of any information that they would not have going into a sales meeting with a restaurant that hasn't opened yet. I wanted to see if a meaningful model could be built based on the data they would have going into the sales meeting. I will perform analysis on both of these output variables independent of one another. I split the data into 80% train and 20% test so that I could train the model on 80% and test it on the remaining 20%.  I converted categorical variables represented by columns 1 through 10 to factor variables.  I dropped sales from the longevity table and longevity from the sales tables because I didn't want them to be used as predictors for each other so created two data sets to be used in my modeling.  
+
+```{r , echo=TRUE}
+
+#Converted categorical variables into factor variables.  
+md[c(1,2,3,4,5,6,7,8,9,10)]<-data.frame(lapply(md[c(1,2,3,4,5,6,7,8,9,10)],factor)) 
+
+#Changed data type from character to numeric
+md$year.2019 <- as.numeric(md$year.2019)
+md$year.2020 <- as.numeric(md$year.2020)
+md$year.2021 <- as.numeric(md$year.2021)
+md$X..of.US.Median.2019 <- as.numeric(md$X..of.US.Median.2019)
+md$X..of.US.2020 <- as.numeric(md$X..of.US.2020)
+md$X..of.US.Median.2021 <- as.numeric(md$X..of.US.Median.2021)
+md$County.Population <- as.numeric(md$County.Population)
+
+#this is longevity data frame that drops the 3 year sales and others as noted above.
+mdL <- md[,-18]
+
+#this is sales that drops longevity and others as noted above.
+mds <- md[,-19]
+
+#Longevity train and test set
+set.seed(1234)
+nRows <- nrow(mdL) # gives you the number of rows
+train.size.L <- floor(nRows*0.8)
+train.index.L <- sample(1:nRows, train.size.L, replace=F)
+train.L <- mdL[train.index.L,]  
+test.L <- mdL[-train.index.L,]
+
+#Sales train and test set
+set.seed(123)
+nRows <- nrow(mds) # gives you the number of rows
+train.size.s <- floor(nRows*0.8)
+train.index.s <- sample(1:nRows, train.size.s, replace=F)
+train.s <- mds[train.index.s,]  
+test.s <- mds[-train.index.s,]
+```
+
+##Linear Model
+This is a linear model for predicting customer longevity and using all predictor variables to train and test the model.  After training and testing the model my performance metric of RMSE came back at 8.707738 for Longevity. I will talk about coefficients; p values and what model performs better in model interpretation. Model Train Time: 8.860184 seconds
+
+
+```{r , echo=TRUE}
+
+start <- Sys.time() # Start tracking time
+modellml<- lm(Customer.Longevity~.,train.L) #Train model
+end <- Sys.time() # End tracking time
+predictL <- predict(modellml, data = test.L) #Test model 
+RMSE(predictL, test.L$Customer.Longevity, na.rm = FALSE) #Model Metric
+print(end-start) # Print run time
+```
+
+This is a linear model for predicting customer sales and using all predictor variables to train the model. After training and testing the model my performance metric of RMSE came back at RMSE is 39668.14 for Sales. I will talk about coefficients; p values and what model performs better in model interpretation. Model Train Time: 0.9503791 secs
+ 
+```{r , echo=TRUE}
+start.ls <- Sys.time() # Start tracking time
+modellms<- lm(X3.Year.Period.Profit~.,train.s)  #Train model
+end.ls <- Sys.time() # End tracking time
+predicts <- predict(modellms, data = test.s) #Test model 
+RMSE(predicts, test.s$X3.Year.Period.Profit, na.rm = FALSE) #Model Metric
+print(end.ls-start.ls) # Print run time
+```
+
+##GLM Model
+
+This is a GLM model for predicting customer longevity and using all predictor variables to train the model.After training and testing the model my performance metric of RMSE came back at RMSE is 8.713989 for longevity. I will talk about coefficients; p values and what model performs better in model interpretation. Model Train Time: 1.852106 secs
+
+```{r , echo=TRUE}
+start.lg <- Sys.time() # Start tracking time
+model.L <- glm(Customer.Longevity ~., data = train.L, family = gaussian) #Train model
+end.lg <- Sys.time() # End tracking time
+model.Lt <- predict(model.L, data = test.L) #Test model 
+RMSE(model.Lt, test.L$Customer.Longevity, na.rm = FALSE) #Model Metric
+print(end.lg-start.lg) # Print run time
+```
+
+This is a GLM model for predicting customer sales and using all predictor variables to train the model. After training and testing the model my performance metric of RMSE came back at RMSE is 39676.36 for sales. I will talk about coefficients; p values and what model performs better in model interpretation. Model Train Time: 1.897175 secs
+
+```{r , echo=TRUE}
+start.sg <- Sys.time() # Start tracking time
+model.s <- glm(X3.Year.Period.Profit~., data = train.s, family = gaussian) #Train model
+end.sg <- Sys.time() # End tracking time
+model.st <- predict(model.s, data = test.L) #Test model 
+RMSE(model.st, test.s$X3.Year.Period.Profit, na.rm = FALSE) #Model Metric
+print(end.sg-start.sg) # Print run time
+```
+
+#Evaluation: Strengths and weaknesses of each model and what metric I used to select the best performing model based on the model characterisitics
+
+•	Generally speaking, the strengths and weaknesses of these models are as follows.  Linear models are popular because they are 1) Easy to implement and interpret by viewing impacts of the coefficient on the dependent variable, 2) can handle large data sets pretty efficiently, 3) ability to use p values to see if the impact of the variable is having a statistically significant impact on the outcome variable.  Some of the weaknesses of using a linear model include 1) assumes it is a linear relationship between predictor and outcome variables, 2) can require additional transformations at times, 3) assumes dependent variables have a constant variance across the levels of the independent variables which may or may not be true.  A general linearized model has several strengths and weaknesses.  Strengths 1) can model a range of different data types, 2) easy to interpret coefficients on the output variable, 3) AIC can be used to compare against other models.  Weaknesses include 1) can become complex when multiple predictors are included, 2) data is assumed to follow a specific distribution, 3) can become overfit if there are to many predictors in the model.  
+
+•	I trained the model using 80% of the data and tested it on the remaining 20% to validate the model.  I used Root Mean Squared Error as the performance metric in comparing the models to one another.  I chose to go with the LM model because it performed better than the GLM for both the longevity and 3 year sales.  Comparing RMSE of longevity LM (8.707738) vs GLM (8.713989) and sales LM (39668.14) vs GLM (39676.36) shows that the linear model performs better than the GLM.  Comparing run time of LM longevity GLM longevity LM sales 
+
+#Model Interpretation
+
+Rather than go through and interpret all of the coefficients and p values I decided to just not the things that stood out to me for my chosen LM model. 
+•	County.Population had a positive correlation for sales but a negative correlation for longevity both of which were statistically significant with p values under .05.
+•	Transportation for sub trade channel on both sales and longevity were positive and statistically significant with a p value under .05.
+•	longevity for median income for 2019 was negatively correlated but in 2020 it was positively correlated. 
+
+#Results and Business Validation
+
+No, my results are not sufficient to solve the business problem.  My RMSE for the linear model (8.82 Longevity and $58,241.66 for sales)  and GLM were high on both the longevity and 3 year sales relative to the amounts.  Most of the data provided i.e. sales information was data that was known by Swire after the deal has already been made with the new customer which could not be used to inform the kind of discounts could be offered.  Although the models that were used were good models my predictor variables were not sufficient to create a useful model.  I believe a large part of it was that most of the predictor values were factor and not numeric which makes it difficult for linear models to predict.  I would recommend additional data to be gathered in order to increase the accuracy of the model such as customer information both about the owner and about the physical facility.  Although it would be challenging to get information about the person or company that is starting the company it would be very beneficial to gather this information for example do they own other businesses, how many years of business experience do they have, who is their target market for their goods etc.  Additional information for restaurants in particular would be drive thru, number of tables and chairs, seating capacity, number of parking spots, app ordering, etc.  Adding these predictors to the model would most likely increase the accuracy of the model.  After going through this exercise, I would have liked to see the outcome variable be what factors determine the discount given and are those the right discounts to offer those customers.  
