@@ -2,6 +2,7 @@
 
 ##Description
 During my pursuit of a Masters degree at the University of Utah I had the opportunity to complete a data science project for Swire Coca Cola as a part of my capstone coursework.  During this project I had the opportunity to complete the below major components of a analytics project. 
+
 - Business Problem
 - Analytical Objective
 - Exploratory Data Analysis
@@ -48,3 +49,5 @@ Once this data is augmented to the existing data set I’d recommend rerunning a
 
 ##Credits
 Everything executed on this was done by Brian Burdick with an exception of the power point group presentation.  My group members that completed the presentation slides included Derick Lee, Kayla Smartz, Sandy White, and myself.
+
+Note: the file for customer sales data was to large to upload so I had to slice it into three parts.
