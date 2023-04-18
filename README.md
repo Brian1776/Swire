@@ -28,21 +28,34 @@ My recommended next steps is to look into gaining additional data to augment you
 
 Group or Person
 -How many years of business experience?
+
 -Do they own multiple businesses?
+
 --Do they own additional businesses of this type?
+
 -How long has this customer been in business for?
+
 -Is this a first, second, or third generation owned business?
 
 Business Characteristics
 -Does the company have a drive thru?
+
 -What is the seating or physical capacity?
+
 -How many parking spots are at the location?
+
 -Is there off-street parking?
+
 -What are the hours and days of operation?
+
 -How many vehicles pass through that street?
+
 -Can patrons’ access through multiple entrances?
+
 -Can patrons access the physical location regardless of traffic lanes or are lanes partitioned?
+
 -Does the customer have apps where customers can make purchases?
+
 -Is the customer open during hours people normally purchase Coca Cola products?
 
 Once this data is augmented to the existing data set I’d recommend rerunning and revaluating the models used in this analysis.  
